@@ -3,17 +3,22 @@
 # https://google.github.io/mediapipe/solutions/face_detection#min_detection_confidence
 
 from array import ArrayType
+from dataclasses import dataclass
 from pydoc import describe
 import cv2
 import mediapipe as mp
 import argparse
+import imghdr
+import os
 
 # Data Types 
+@dataclass
 class FaceDetectionResult:
-    def __init__(self, success:bool = False, faceCount:int = 0) -> None:
-        self.success = success
-        self.faceCount = faceCount
+    """Class to share face detection result with client"""
+    success: bool
+    faceCount: int
 
+# FUNCTION - FACE_DETECT
 def face_detect(imageFilePath: str, model_selection: int = 1, 
                 min_detection_confidence: float = 0.5) -> FaceDetectionResult:
     """
@@ -23,7 +28,7 @@ def face_detect(imageFilePath: str, model_selection: int = 1,
         MODEL_SELECTION: An integer index 0 or 1. Use 0 to select a short-range model that works
                          best for faces within 2 meters from the camera, and 1 for a full-range 
                          model best for faces within 5 meters. For the full-range option, a sparse 
-                         model is used for its improved inference speed. Please refer to the model 
+                         model is used for ts improved inference speed. Please refer to the model 
                          cards for details. 
                          Default to 0 if not specified.
         MIN_DETECTION_CONFIDENCE: Minimum confidence value ([0.0, 1.0]) from the face detection 
@@ -59,9 +64,44 @@ def face_detect(imageFilePath: str, model_selection: int = 1,
 
 # MAIN EXECUTION
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Detect faces in an image')
-    parser.add_argument('--image', type=str, required=True)
+    # parse cli arguments 
+    parser = argparse.ArgumentParser(description="Detect faces in an image or in all images at a path.")
+    parser.add_argument('--image', type=str, help="Process a single image", required=False)
+    parser.add_argument('--path', type=str, help="Process all images in the path", required=False)
     args = vars(parser.parse_args())
-    print(f'Analyzing image {args["image"]}')
-    result = face_detect(args['image'])
-    print(f"Found {result.faceCount} faces in the image.")
+
+    # if image specified 
+    if args["image"] is not None:
+        imageFilePath = args["image"]
+        print(f"Analyzing image {imageFilePath}")
+        result = face_detect(imageFilePath=imageFilePath)
+        print(f"Found {result.faceCount} faces in the image.")
+        exit()
+
+    # if path for images specified 
+    if args["path"] is not None:
+        imagesPath = args["path"]
+        print(f"Analyzing images at path {imagesPath}")
+        totalFiles = []
+        imageFiles = []
+        filesParseFailed = []
+        for (root, dirs, files) in os.walk(imagesPath):
+            for file in files:
+                filePath = os.path.join(root, file)
+                totalFiles.append(file)
+                try:
+                    imgFileType = imghdr.what(filePath)
+                except:
+                    filesParseFailed.append(file)
+
+                if imgFileType is not None:
+                    imageFiles.append(filePath)
+
+        print(f"Got {len(totalFiles)} total files in {imagesPath}")
+        print(f"Got {len(imageFiles)} image files in {imagesPath}")
+        print(f"Failed to parse {len(filesParseFailed)} files")
+        exit()
+
+    print("No image or images path specified\n")
+    parser.print_help()
+

@@ -1,4 +1,4 @@
-# Let's base of python ubuntu image 
+# Let's base off python ubuntu image 
 FROM python:3.10.7-bullseye
 
 # Install python libraries
