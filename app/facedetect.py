@@ -85,6 +85,12 @@ if __name__ == '__main__':
         totalFiles = []
         imageFiles = []
         filesParseFailed = []
+        fileCount = 0
+        for (root, dirs, files) in os.walk(imagesPath):
+            for file in files:
+                fileCount += 1
+        print(f"Found total {fileCount} files in {imagesPath}")
+        parsedFileCount = 0
         for (root, dirs, files) in os.walk(imagesPath):
             for file in files:
                 filePath = os.path.join(root, file)
@@ -92,14 +98,16 @@ if __name__ == '__main__':
                 try:
                     imgFileType = imghdr.what(filePath)
                 except:
-                    filesParseFailed.append(file)
-
+                     print(f"failed to parse file {file}")
                 if imgFileType is not None:
                     imageFiles.append(filePath)
+                print(f"\rParsed {parsedFileCount} files out of {fileCount}", end="")
+                parsedFileCount += 1
 
-        print(f"Got {len(totalFiles)} total files in {imagesPath}")
+        print()
         print(f"Got {len(imageFiles)} image files in {imagesPath}")
-        print(f"Failed to parse {len(filesParseFailed)} files")
+        if len(filesParseFailed) > 0: 
+            print(f"Failed to parse {len(filesParseFailed)} files")
         exit()
 
     print("No image or images path specified\n")
