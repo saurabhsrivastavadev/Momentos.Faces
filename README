@@ -2,6 +2,7 @@ Moved from docker to local python virtual environment for performance.
 
 # Setup steps 
 - python -m venv venv
+- venv\Scripts\Activate
 - pip install mediapipe
 - pip install cmake
 - pip install dlib
