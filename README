@@ -1,0 +1,11 @@
+Moved from docker to local python virtual environment for performance.
+
+# Setup steps 
+- python -m venv venv
+- pip install mediapipe
+- pip install cmake
+- pip install dlib
+- pip install face_recognition
+- pip install opencv-python
+
+
