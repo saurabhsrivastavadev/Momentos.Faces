@@ -5,6 +5,7 @@
 from array import ArrayType
 from dataclasses import dataclass
 from pydoc import describe
+from PIL import Image
 import cv2
 import mediapipe as mp
 import argparse
@@ -45,19 +46,42 @@ def face_detect(imageFilePath: str, model_selection: int = 1,
                     [0.0, 1.0] by the image width and height respectively.
     """
     print("face_detect")
-    mpFaceDetection = mp.solutions.face_detection
-    mpDrawing = mp.solutions.drawing_utils
+    mpFaceDetection = mp.solutions.face_detection # type: ignore
+    mpDrawing = mp.solutions.drawing_utils # type: ignore
 
     with mpFaceDetection.FaceDetection(model_selection, min_detection_confidence) as faceDetection:
+
         image = cv2.imread(imageFilePath)
         results = faceDetection.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
         
         if not results.detections:
             return FaceDetectionResult(success=False, faceCount=0)
-        
-        annotatedImage = image.copy()
+
+        faceNumber: int = 0
         for detection in results.detections:
-            mpDrawing.draw_detection(annotatedImage, detection)
+            height, width, channels = image.shape
+            croppedHeight = (int)(detection.location_data.relative_bounding_box.height * height)
+            croppedWidth = (int)(detection.location_data.relative_bounding_box.width * width)
+
+            croppedXMin = (int)(detection.location_data.relative_bounding_box.xmin * width) - 120
+            croppedYMin = (int)(detection.location_data.relative_bounding_box.ymin * height) - 120
+            croppedXMax = croppedXMin + croppedWidth + 120
+            croppedYMax = croppedYMin + croppedHeight + 120
+
+            if croppedXMin < 0:
+                croppedXMin = 0
+            if croppedXMax > width:
+                croppedXMax = width - 5
+            if croppedYMin < 0:
+                croppedYMin = 0
+            if croppedYMax > height:
+                croppedYMax = height - 5
+
+            croppedImage = image[croppedYMin:croppedYMax, croppedXMin:croppedXMax]
+
+            originalFileName:str = os.path.basename(imageFilePath)
+            cv2.imwrite(f"c:/temp/{originalFileName}_face{faceNumber}.jpg", croppedImage)
+            faceNumber += 1
 
         return FaceDetectionResult(success=True, faceCount=len(results.detections))
 
@@ -95,10 +119,12 @@ if __name__ == '__main__':
             for file in files:
                 filePath = os.path.join(root, file)
                 totalFiles.append(file)
+                imgFileType = None
                 try:
                     imgFileType = imghdr.what(filePath)
                 except:
                      print(f"failed to parse file {file}")
+                     filesParseFailed.append(file)
                 if imgFileType is not None:
                     imageFiles.append(filePath)
                 print(f"\rParsed {parsedFileCount} files out of {fileCount}", end="")
