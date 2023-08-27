@@ -8,9 +8,8 @@ from pydoc import describe
 from PIL import Image
 import cv2
 import mediapipe as mp
-import argparse
-import imghdr
-import os
+
+from numpy import ndarray
 
 # Data Types 
 @dataclass
@@ -18,6 +17,7 @@ class FaceDetectionResult:
     """Class to share face detection result with client"""
     success: bool
     faceCount: int
+    croppedFaces: list[ndarray]
 
 # FUNCTION - FACE_DETECT
 def face_detect(imageFilePath: str, model_selection: int = 1, 
@@ -55,19 +55,22 @@ def face_detect(imageFilePath: str, model_selection: int = 1,
         results = faceDetection.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
         
         if not results.detections:
-            return FaceDetectionResult(success=False, faceCount=0)
+            return FaceDetectionResult(success=False, faceCount=0, croppedFaces=[])
 
-        faceNumber: int = 0
+        faces:list[ndarray] = []
         for detection in results.detections:
+            print(detection)
             height, width, channels = image.shape
             croppedHeight = (int)(detection.location_data.relative_bounding_box.height * height)
             croppedWidth = (int)(detection.location_data.relative_bounding_box.width * width)
 
+            # 120 px margin around the face for extraction
             croppedXMin = (int)(detection.location_data.relative_bounding_box.xmin * width) - 120
             croppedYMin = (int)(detection.location_data.relative_bounding_box.ymin * height) - 120
             croppedXMax = croppedXMin + croppedWidth + 120
             croppedYMax = croppedYMin + croppedHeight + 120
 
+            # Adjust margins
             if croppedXMin < 0:
                 croppedXMin = 0
             if croppedXMax > width:
@@ -77,65 +80,7 @@ def face_detect(imageFilePath: str, model_selection: int = 1,
             if croppedYMax > height:
                 croppedYMax = height - 5
 
-            croppedImage = image[croppedYMin:croppedYMax, croppedXMin:croppedXMax]
+            croppedImage:ndarray = image[croppedYMin:croppedYMax, croppedXMin:croppedXMax]
+            faces.append(croppedImage)
 
-            originalFileName:str = os.path.basename(imageFilePath)
-            cv2.imwrite(f"c:/temp/{originalFileName}_face{faceNumber}.jpg", croppedImage)
-            faceNumber += 1
-
-        return FaceDetectionResult(success=True, faceCount=len(results.detections))
-
-
-# MAIN EXECUTION
-if __name__ == '__main__':
-    # parse cli arguments 
-    parser = argparse.ArgumentParser(description="Detect faces in an image or in all images at a path.")
-    parser.add_argument('--image', type=str, help="Process a single image", required=False)
-    parser.add_argument('--path', type=str, help="Process all images in the path", required=False)
-    args = vars(parser.parse_args())
-
-    # if image specified 
-    if args["image"] is not None:
-        imageFilePath = args["image"]
-        print(f"Analyzing image {imageFilePath}")
-        result = face_detect(imageFilePath=imageFilePath)
-        print(f"Found {result.faceCount} faces in the image.")
-        exit()
-
-    # if path for images specified 
-    if args["path"] is not None:
-        imagesPath = args["path"]
-        print(f"Analyzing images at path {imagesPath}")
-        totalFiles = []
-        imageFiles = []
-        filesParseFailed = []
-        fileCount = 0
-        for (root, dirs, files) in os.walk(imagesPath):
-            for file in files:
-                fileCount += 1
-        print(f"Found total {fileCount} files in {imagesPath}")
-        parsedFileCount = 0
-        for (root, dirs, files) in os.walk(imagesPath):
-            for file in files:
-                filePath = os.path.join(root, file)
-                totalFiles.append(file)
-                imgFileType = None
-                try:
-                    imgFileType = imghdr.what(filePath)
-                except:
-                     print(f"failed to parse file {file}")
-                     filesParseFailed.append(file)
-                if imgFileType is not None:
-                    imageFiles.append(filePath)
-                print(f"\rParsed {parsedFileCount} files out of {fileCount}", end="")
-                parsedFileCount += 1
-
-        print()
-        print(f"Got {len(imageFiles)} image files in {imagesPath}")
-        if len(filesParseFailed) > 0: 
-            print(f"Failed to parse {len(filesParseFailed)} files")
-        exit()
-
-    print("No image or images path specified\n")
-    parser.print_help()
-
+        return FaceDetectionResult(success=True, faceCount=len(results.detections), croppedFaces=faces)
