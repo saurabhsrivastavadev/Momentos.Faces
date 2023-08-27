@@ -1,6 +1,7 @@
 Moved from docker to local python virtual environment for performance.
 
 # Setup steps 
+- Make sure you have a python version >= 3.11.5
 - python -m venv venv
 - venv\Scripts\Activate
 - pip install mediapipe
