@@ -6,6 +6,7 @@ from array import ArrayType
 from dataclasses import dataclass
 from pydoc import describe
 from PIL import Image
+from appimage import AppImage
 import cv2
 import mediapipe as mp
 
@@ -20,7 +21,7 @@ class FaceDetectionResult:
     croppedFaces: list[ndarray]
 
 # FUNCTION - FACE_DETECT
-def face_detect(imageFilePath: str, model_selection: int = 1, 
+def face_detect(image: AppImage, model_selection: int = 1, 
                 min_detection_confidence: float = 0.5) -> FaceDetectionResult:
     """
     Detect and return list of faces in an image.
@@ -51,8 +52,7 @@ def face_detect(imageFilePath: str, model_selection: int = 1,
 
     with mpFaceDetection.FaceDetection(model_selection, min_detection_confidence) as faceDetection:
 
-        image = cv2.imread(imageFilePath)
-        results = faceDetection.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        results = faceDetection.process(cv2.cvtColor(image.cv2ImageBuffer, cv2.COLOR_BGR2RGB))
         
         if not results.detections:
             return FaceDetectionResult(success=False, faceCount=0, croppedFaces=[])
@@ -60,7 +60,7 @@ def face_detect(imageFilePath: str, model_selection: int = 1,
         faces:list[ndarray] = []
         for detection in results.detections:
             print(detection)
-            height, width, channels = image.shape
+            height, width, channels = image.cv2ImageBuffer.shape
             croppedHeight = (int)(detection.location_data.relative_bounding_box.height * height)
             croppedWidth = (int)(detection.location_data.relative_bounding_box.width * width)
 
@@ -80,7 +80,7 @@ def face_detect(imageFilePath: str, model_selection: int = 1,
             if croppedYMax > height:
                 croppedYMax = height - 5
 
-            croppedImage:ndarray = image[croppedYMin:croppedYMax, croppedXMin:croppedXMax]
+            croppedImage:ndarray = image.cv2ImageBuffer[croppedYMin:croppedYMax, croppedXMin:croppedXMax]
             faces.append(croppedImage)
 
         return FaceDetectionResult(success=True, faceCount=len(results.detections), croppedFaces=faces)
